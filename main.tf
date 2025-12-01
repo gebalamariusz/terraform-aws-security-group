@@ -15,11 +15,11 @@ locals {
     }
   )
 
-  # Flatten ingress rules into a map
+  # Flatten ingress rules into a map with stable keys
   ingress_rules = merge([
     for sg_name, sg in var.security_groups : {
-      for idx, rule in sg.ingress :
-      "${sg_name}-ingress-${idx}" => {
+      for rule_name, rule in sg.ingress :
+      "${sg_name}-ingress-${rule_name}" => {
         sg_name     = sg_name
         type        = "ingress"
         port        = rule.port
@@ -31,11 +31,11 @@ locals {
     }
   ]...)
 
-  # Flatten egress rules into a map
+  # Flatten egress rules into a map with stable keys
   egress_rules = merge([
     for sg_name, sg in var.security_groups : {
-      for idx, rule in sg.egress :
-      "${sg_name}-egress-${idx}" => {
+      for rule_name, rule in sg.egress :
+      "${sg_name}-egress-${rule_name}" => {
         sg_name     = sg_name
         type        = "egress"
         port        = rule.port
