@@ -19,8 +19,8 @@ variable "security_groups" {
     Each security group object supports:
     - description (required) - Description of the security group
     - tier        (optional) - Tier name for tagging (e.g., "public", "application")
-    - ingress     (optional) - List of ingress rules
-    - egress      (optional) - List of egress rules
+    - ingress     (optional) - Map of ingress rules (key = rule name, stable identifier)
+    - egress      (optional) - Map of egress rules (key = rule name, stable identifier)
 
     Each rule supports:
     - port        (required) - Port number (use -1 for all ports)
@@ -28,24 +28,27 @@ variable "security_groups" {
     - cidr_blocks (optional) - List of CIDR blocks
     - source_sg   (optional) - Name of source security group (from this module)
     - description (optional) - Rule description
+
+    IMPORTANT: Use descriptive keys for rules (e.g., "https", "http-redirect").
+    Keys are stable identifiers - changing them will destroy/recreate rules.
   EOT
   type = map(object({
     description = string
     tier        = optional(string, "")
-    ingress = optional(list(object({
+    ingress = optional(map(object({
       port        = number
       protocol    = optional(string, "tcp")
       cidr_blocks = optional(list(string), [])
       source_sg   = optional(string, "")
       description = optional(string, "")
-    })), [])
-    egress = optional(list(object({
+    })), {})
+    egress = optional(map(object({
       port        = number
       protocol    = optional(string, "tcp")
       cidr_blocks = optional(list(string), [])
       source_sg   = optional(string, "")
       description = optional(string, "")
-    })), [])
+    })), {})
   }))
 
   validation {
