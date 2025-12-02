@@ -15,40 +15,85 @@ locals {
     }
   )
 
-  # Flatten ingress rules into a map with stable keys
-  ingress_rules = merge([
+  # Flatten ingress rules - ONE RULE PER CIDR for better update handling
+  # CIDR-based rules (one resource per CIDR block)
+  ingress_cidr_rules = merge(flatten([
+    for sg_name, sg in var.security_groups : [
+      for rule_name, rule in sg.ingress : [
+        for cidr in rule.cidr_blocks : {
+          "${sg_name}-ingress-${rule_name}-${replace(replace(cidr, "/", "-"), ".", "_")}" = {
+            sg_name     = sg_name
+            type        = "ingress"
+            port        = rule.port
+            protocol    = rule.protocol
+            cidr_block  = cidr
+            source_sg   = ""
+            description = rule.description
+          }
+        }
+      ] if length(rule.cidr_blocks) > 0
+    ]
+  ])...)
+
+  # Source SG-based ingress rules (one resource per rule)
+  ingress_sg_rules = merge([
     for sg_name, sg in var.security_groups : {
       for rule_name, rule in sg.ingress :
-      "${sg_name}-ingress-${rule_name}" => {
+      "${sg_name}-ingress-${rule_name}-sg" => {
         sg_name     = sg_name
         type        = "ingress"
         port        = rule.port
         protocol    = rule.protocol
-        cidr_blocks = rule.cidr_blocks
+        cidr_block  = ""
         source_sg   = rule.source_sg
         description = rule.description
-      }
+      } if rule.source_sg != ""
     }
   ]...)
 
-  # Flatten egress rules into a map with stable keys
-  egress_rules = merge([
+  # Flatten egress rules - ONE RULE PER CIDR for better update handling
+  # CIDR-based rules (one resource per CIDR block)
+  egress_cidr_rules = merge(flatten([
+    for sg_name, sg in var.security_groups : [
+      for rule_name, rule in sg.egress : [
+        for cidr in rule.cidr_blocks : {
+          "${sg_name}-egress-${rule_name}-${replace(replace(cidr, "/", "-"), ".", "_")}" = {
+            sg_name     = sg_name
+            type        = "egress"
+            port        = rule.port
+            protocol    = rule.protocol
+            cidr_block  = cidr
+            source_sg   = ""
+            description = rule.description
+          }
+        }
+      ] if length(rule.cidr_blocks) > 0
+    ]
+  ])...)
+
+  # Source SG-based egress rules (one resource per rule)
+  egress_sg_rules = merge([
     for sg_name, sg in var.security_groups : {
       for rule_name, rule in sg.egress :
-      "${sg_name}-egress-${rule_name}" => {
+      "${sg_name}-egress-${rule_name}-sg" => {
         sg_name     = sg_name
         type        = "egress"
         port        = rule.port
         protocol    = rule.protocol
-        cidr_blocks = rule.cidr_blocks
+        cidr_block  = ""
         source_sg   = rule.source_sg
         description = rule.description
-      }
+      } if rule.source_sg != ""
     }
   ]...)
 
   # Combine all rules
-  all_rules = merge(local.ingress_rules, local.egress_rules)
+  all_rules = merge(
+    local.ingress_cidr_rules,
+    local.ingress_sg_rules,
+    local.egress_cidr_rules,
+    local.egress_sg_rules
+  )
 }
 
 # ------------------------------------------------------------------------------
@@ -89,8 +134,8 @@ resource "aws_security_group_rule" "this" {
   to_port   = each.value.port == -1 ? 65535 : each.value.port
   protocol  = each.value.protocol
 
-  # Either cidr_blocks or source_security_group_id
-  cidr_blocks              = length(each.value.cidr_blocks) > 0 ? each.value.cidr_blocks : null
+  # Either cidr_blocks (single CIDR as list) or source_security_group_id
+  cidr_blocks              = each.value.cidr_block != "" ? [each.value.cidr_block] : null
   source_security_group_id = each.value.source_sg != "" ? aws_security_group.this[each.value.source_sg].id : null
 
   description = each.value.description != "" ? each.value.description : null
