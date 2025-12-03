@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            ## Usage
+
+            ```hcl
+            module "security_groups" {
+              source  = "gebalamariusz/security-group/aws"
+              version = "${{ github.ref_name }}"
+
+              vpc_id = "vpc-xxx"
+
+              security_groups = {
+                "alb" = {
+                  description = "ALB security group"
+                  ingress = {
+                    "https" = { port = 443, cidr_blocks = ["0.0.0.0/0"] }
+                  }
+                  egress = {
+                    "all" = { port = -1, protocol = "-1", cidr_blocks = ["0.0.0.0/0"] }
+                  }
+                }
+              }
+            }
+            ```
+
+            ## Documentation
+
+            See [README.md](https://github.com/gebalamariusz/terraform-aws-security-group/blob/${{ github.ref_name }}/README.md) for full documentation.
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

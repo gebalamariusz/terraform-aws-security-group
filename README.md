@@ -1,4 +1,10 @@
-# terraform-aws-security-group
+# AWS Security Group Terraform Module
+
+[![Terraform Registry](https://img.shields.io/badge/Terraform%20Registry-gebalamariusz%2Fsecurity--group%2Faws-blue?logo=terraform)](https://registry.terraform.io/modules/gebalamariusz/security-group/aws)
+[![CI](https://github.com/gebalamariusz/terraform-aws-security-group/actions/workflows/ci.yml/badge.svg)](https://github.com/gebalamariusz/terraform-aws-security-group/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/gebalamariusz/terraform-aws-security-group?display_name=tag&sort=semver)](https://github.com/gebalamariusz/terraform-aws-security-group/releases)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.7-purple.svg)](https://www.terraform.io/)
 
 Terraform module to create Security Groups with ingress and egress rules.
 
@@ -30,29 +36,29 @@ module "security_groups" {
     "alb" = {
       description = "ALB Security Group"
       tier        = "public"
-      ingress = [
-        { port = 443, cidr_blocks = ["0.0.0.0/0"], description = "HTTPS from internet" }
-      ]
-      egress = [
-        { port = -1, protocol = "-1", cidr_blocks = ["0.0.0.0/0"], description = "All outbound" }
-      ]
+      ingress = {
+        "https" = { port = 443, cidr_blocks = ["0.0.0.0/0"], description = "HTTPS from internet" }
+      }
+      egress = {
+        "all" = { port = -1, protocol = "-1", cidr_blocks = ["0.0.0.0/0"], description = "All outbound" }
+      }
     }
     "ecs" = {
       description = "ECS Tasks Security Group"
       tier        = "application"
-      ingress = [
-        { port = 8080, source_sg = "alb", description = "From ALB" }
-      ]
-      egress = [
-        { port = -1, protocol = "-1", cidr_blocks = ["0.0.0.0/0"], description = "All outbound" }
-      ]
+      ingress = {
+        "from-alb" = { port = 8080, source_sg = "alb", description = "From ALB" }
+      }
+      egress = {
+        "all" = { port = -1, protocol = "-1", cidr_blocks = ["0.0.0.0/0"], description = "All outbound" }
+      }
     }
     "efs" = {
       description = "EFS Security Group"
       tier        = "application"
-      ingress = [
-        { port = 2049, source_sg = "ecs", description = "NFS from ECS" }
-      ]
+      ingress = {
+        "nfs-from-ecs" = { port = 2049, source_sg = "ecs", description = "NFS from ECS" }
+      }
     }
   }
 }
@@ -79,9 +85,9 @@ vpcs = {
       "alb" = {
         description = "ALB Security Group"
         tier        = "public"
-        ingress = [
-          { port = 443, cidr_blocks = ["0.0.0.0/0"], description = "HTTPS" }
-        ]
+        ingress = {
+          "https" = { port = 443, cidr_blocks = ["0.0.0.0/0"], description = "HTTPS" }
+        }
       }
     }
   }
@@ -117,8 +123,8 @@ module "security_groups" {
 |-----------|-------------|------|:--------:|
 | description | Security group description | `string` | yes |
 | tier | Tier name for tagging | `string` | no |
-| ingress | List of ingress rules | `list(object)` | no |
-| egress | List of egress rules | `list(object)` | no |
+| ingress | Map of ingress rules (key = stable rule identifier) | `map(object)` | no |
+| egress | Map of egress rules (key = stable rule identifier) | `map(object)` | no |
 
 ### Rule Object
 
